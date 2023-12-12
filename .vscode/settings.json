@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "algorithm": "cpp",
+        "mutex": "cpp",
+        "condition_variable": "cpp",
+        "cmath": "cpp",
+        "complex": "cpp",
+        "functional": "cpp"
+    }
+}
