@@ -176,11 +176,15 @@ int main(int argc, char **argv)
 			sensor_msgs::msg::PointCloud2 pclMsg; //雷达点云数据
 			Scan_to_PointCloud(scan,pclMsg);
 
+    rclcpp::Time current_time = node->get_clock()->now();
+
+            scan_msg->header.stamp = current_time;;
+
 			scan_msg->ranges.resize(scan.points.size());
 			scan_msg->intensities.resize(scan.points.size());
 
-			scan_msg->header.stamp.sec = RCL_NS_TO_S(scan.stamp);;
-			scan_msg->header.stamp.nanosec = scan.stamp - RCL_S_TO_NS(scan_msg->header.stamp.sec);
+            //scan_msg->header.stamp.sec = RCL_NS_TO_S(scan.stamp);;
+			//scan_msg->header.stamp.nanosec = scan.stamp - RCL_S_TO_NS(scan_msg->header.stamp.sec);
 			scan_msg->header.frame_id = node_lidar.lidar_general_info.frame_id;
 
 			scan_msg->angle_min = scan.config.min_angle;
@@ -196,6 +200,7 @@ int main(int argc, char **argv)
 			}
 			//printf("publish--------\n");
 			laser_pub->publish(*scan_msg);
+	pclMsg.header.stamp = current_time;
 			pcloud_pub->publish(pclMsg);
       	}
 	}
