@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 
     double time_offset_sec;
     node->declare_parameter("time_offset", 0.0);
-    node->get_parameter("time_offset", time_offset_sec)
+    node->get_parameter("time_offset", time_offset_sec);
 
 	node->declare_parameter("port", "/dev/sc_mini");
 	//node_lidar.lidar_general_info.port = declare_parameter("port", node_lidar.lidar_general_info.port);
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 
     rclcpp::Time current_time = node->get_clock()->now();
 
-    rclcpp::Duration offset_duration(std::chrono::duration<double>(time_offset_sec));
+    rclcpp::Duration offset_duration{std::chrono::duration<double>(time_offset_sec)};
     rclcpp::Time corrected_time = current_time + offset_duration;
 
             scan_msg->header.stamp = corrected_time;;
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 			}
 			//printf("publish--------\n");
 			laser_pub->publish(*scan_msg);
-	pclMsg.header.stamp = current_time;
+	pclMsg.header.stamp = corrected_time;
 			pcloud_pub->publish(pclMsg);
       	}
 	}
