@@ -30,44 +30,44 @@ class MinimalSubscriber : public rclcpp::Node
     {
 		switch (msg->data)
 		{
-		
+
 			case 1:
 				node_lidar.lidar_status.lidar_ready = true;
 				node_lidar.lidar_status.lidar_abnormal_state = 0;
 				printf("#start lidar\n");
 				break;
-		
+
 			case 2:
 				node_lidar.lidar_status.lidar_ready = false;
 				node_lidar.lidar_status.close_lidar = true;
 				node_lidar.serial_port->write_data(end_lidar,4);
 				printf("#stop lidar\n");
 				break;
-			
+
 			case 3:
 				node_lidar.serial_port->write_data(high_exposure,4);
 				break;
-			
+
 			case 4:
 				node_lidar.serial_port->write_data(low_exposure,4);
 				break;
-			
+
 			case 5:
 				node_lidar.lidar_status.lidar_abnormal_state = 0;
 				break;
-			
+
 			case 6:
 				node_lidar.serial_port->write_data(high_speed,4);
 				node_lidar.lidar_general_info.frequency_max = 103;
 				node_lidar.lidar_general_info.frequency_min = 97;
 				break;
-		
+
 			case 7:
 				node_lidar.serial_port->write_data(low_speed,4);
 				node_lidar.lidar_general_info.frequency_max = 68;
 				node_lidar.lidar_general_info.frequency_min = 52;
 				break;
-			
+
 			default:
 				break;
 		}
@@ -94,7 +94,7 @@ int Scan_to_PointCloud(LaserScan &scan, sensor_msgs::msg::PointCloud2 &outscan)
 		pcl_point.z = 0;
 		cloud->points[i] = pcl_point;
 	}
-	
+
 	pcl::toROSMsg(*cloud, outscan);
 
 }
@@ -107,15 +107,19 @@ int topic_thread()
 
 int main(int argc, char **argv)
 {
-   
+
 	rclcpp::init(argc, argv);
 
 	auto node = rclcpp::Node::make_shared("cspc_lidar");
 
+    double time_offset_sec;
+    node->declare_parameter("time_offset", 0.0);
+    node->get_parameter("time_offset", time_offset_sec)
+
 	node->declare_parameter("port", "/dev/sc_mini");
 	//node_lidar.lidar_general_info.port = declare_parameter("port", node_lidar.lidar_general_info.port);
   	node->get_parameter("port", node_lidar.lidar_general_info.port);
-	
+
 	node->declare_parameter("baudrate", NULL);
 	//node_lidar.lidar_general_info.port = declare_parameter("baudrate", node_lidar.lidar_general_info.m_SerialBaudrate);
   	node->get_parameter("baudrate", node_lidar.lidar_general_info.m_SerialBaudrate);
@@ -123,7 +127,7 @@ int main(int argc, char **argv)
 	node->declare_parameter("frame_id", "laser_link");
 	//node_lidar.lidar_general_info.port = declare_parameter("frame_id", node_lidar.lidar_general_info.frame_id);
   	node->get_parameter("frame_id", node_lidar.lidar_general_info.frame_id);
-	
+
 	node->declare_parameter("version", NULL);
 	//node_lidar.lidar_general_info.port = declare_parameter("version", node_lidar.lidar_general_info.version);
   	node->get_parameter("version", node_lidar.lidar_general_info.version);
@@ -134,13 +138,13 @@ int main(int argc, char **argv)
 
 	thread t2(topic_thread);
 	t2.detach();
-	
-	
+
+
 	auto laser_pub = node->create_publisher<sensor_msgs::msg::LaserScan>("scan", 1);
 	auto pcloud_pub = node->create_publisher<sensor_msgs::msg::PointCloud2>("point_cloud", 10);
 
 	node_start();
-	
+
 	while(rclcpp::ok())
 	{
 		if(node_lidar.lidar_status.lidar_abnormal_state != 0)
@@ -169,7 +173,7 @@ int main(int argc, char **argv)
 			sleep(1);
 		}
 		LaserScan scan;
-		
+
 		if(data_handling(scan))
 		{
 			auto scan_msg = std::make_shared<sensor_msgs::msg::LaserScan>();//雷达数据
@@ -178,7 +182,10 @@ int main(int argc, char **argv)
 
     rclcpp::Time current_time = node->get_clock()->now();
 
-            scan_msg->header.stamp = current_time;;
+    rclcpp::Duration offset_duration(std::chrono::duration<double>(time_offset_sec));
+    rclcpp::Time corrected_time = current_time + offset_duration;
+
+            scan_msg->header.stamp = corrected_time;;
 
 			scan_msg->ranges.resize(scan.points.size());
 			scan_msg->intensities.resize(scan.points.size());
