@@ -2,7 +2,7 @@ cspc_lidar:
   ros__parameters:
     port: /dev/sc_mini
     frame_id: laser_frame
-    time_offset: -0.10
+    time_offset: 0.0
     ignore_array: ""
     baudrate: 230400
     samp_rate: 9
