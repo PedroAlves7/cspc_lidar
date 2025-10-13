@@ -11,7 +11,6 @@
 #include <chrono>
 
 // Função auxiliar para converter Scan para PointCloud2
-// A correção está aqui: Passamos o frame_id como um argumento.
 void Scan_to_PointCloud(const LaserScan &scan, sensor_msgs::msg::PointCloud2 &outscan, const std::string &frame_id)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -42,7 +41,9 @@ public:
         this->declare_parameter<std::string>("port", "/dev/sc_mini");
         this->declare_parameter<int>("baudrate", 230400);
         this->declare_parameter<std::string>("frame_id", "laser_frame");
-        this->declare_parameter<std::string>("version", "");
+
+        // Correção do tipo de parâmetro para 'int'
+        this->declare_parameter<int>("version", 0);
 
         // Obtenção de parâmetros
         this->get_parameter("time_offset", time_offset_sec_);
@@ -79,17 +80,24 @@ public:
 private:
     void status_callback(const std_msgs::msg::UInt16::SharedPtr msg)
     {
-        switch (msg->data)
-        {
-        case 1:
-            node_lidar.lidar_status.lidar_ready = true;
-            node_lidar.lidar_status.lidar_abnormal_state = 0;
-            RCLCPP_INFO(this->get_logger(), "Comando recebido: Iniciar Lidar");
-            break;
-        // ... (outros casos) ...
-        default:
-            break;
-        }
+       switch (msg->data)
+       {
+          case 1:
+             node_lidar.lidar_status.lidar_ready = true;
+             node_lidar.lidar_status.lidar_abnormal_state = 0;
+             RCLCPP_INFO(this->get_logger(), "Comando recebido: Iniciar Lidar");
+             break;
+
+          case 2:
+             node_lidar.lidar_status.lidar_ready = false;
+             node_lidar.lidar_status.close_lidar = true;
+             node_lidar.serial_port->write_data(end_lidar,4);
+             RCLCPP_INFO(this->get_logger(), "Comando recebido: Parar Lidar");
+             break;
+        // Adicione outros casos conforme necessário
+          default:
+             break;
+       }
     }
 
     void lidar_loop()
@@ -114,7 +122,6 @@ private:
                 auto scan_msg = std::make_unique<sensor_msgs::msg::LaserScan>();
                 sensor_msgs::msg::PointCloud2 pcl_msg;
 
-                // A correção está aqui: Passamos o frame_id que guardámos.
                 Scan_to_PointCloud(scan, pcl_msg, node_lidar.lidar_general_info.frame_id);
 
                 rclcpp::Time corrected_time = this->get_clock()->now() + rclcpp::Duration::from_seconds(time_offset_sec_);
