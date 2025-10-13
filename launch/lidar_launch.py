@@ -25,12 +25,12 @@ def generate_launch_description():
                                 output='screen',
                                 emulate_tty=True,
                                 parameters=[parameter_file],
-                                #node_name = 'cspc_lidar',
-                                #node_namespace = '/',
+                                node_name = 'cspc_lidar',
+                                node_namespace = '/',
                                 name='cspc_lidar',
                                 executable = 'cspc_lidar',
                                 namespace='/',
-                                #remappings=[('cspc_lidar', 'cspc')],
+                                remappings=[('cspc_lidar', 'cspc')],
                                 )
 
 
