@@ -11,11 +11,11 @@
 #include <chrono>
 
 // Função auxiliar para converter Scan para PointCloud2
-void Scan_to_PointCloud(const LaserScan &scan, sensor_msgs::msg::PointCloud2 &outscan)
+// A correção está aqui: Passamos o frame_id como um argumento.
+void Scan_to_PointCloud(const LaserScan &scan, sensor_msgs::msg::PointCloud2 &outscan, const std::string &frame_id)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    // O frame_id da PointCloud deve ser o mesmo do LaserScan
-    cloud->header.frame_id = scan.config.frame_id;
+    cloud->header.frame_id = frame_id; // Usar o frame_id passado como argumento
     cloud->width = scan.points.size();
     cloud->height = 1;
     cloud->points.resize(cloud->width * cloud->height);
@@ -23,7 +23,6 @@ void Scan_to_PointCloud(const LaserScan &scan, sensor_msgs::msg::PointCloud2 &ou
     for (size_t i = 0; i < scan.points.size(); i++)
     {
         pcl::PointXYZ pcl_point;
-        // A conversão deve usar radianos, não graus
         pcl_point.x = scan.points[i].range * std::cos(scan.points[i].angle * M_PI / 180.0);
         pcl_point.y = scan.points[i].range * std::sin(scan.points[i].angle * M_PI / 180.0);
         pcl_point.z = 0;
@@ -41,7 +40,7 @@ public:
         // Declaração de parâmetros
         this->declare_parameter<double>("time_offset", 0.0);
         this->declare_parameter<std::string>("port", "/dev/sc_mini");
-        this->declare_parameter<int>("baudrate", 230400); // Valor padrão comum
+        this->declare_parameter<int>("baudrate", 230400);
         this->declare_parameter<std::string>("frame_id", "laser_frame");
         this->declare_parameter<std::string>("version", "");
 
@@ -63,16 +62,13 @@ public:
 
         RCLCPP_INFO(this->get_logger(), "Iniciando o driver do Lidar CSPC...");
 
-        // Inicia o hardware do lidar
         node_start();
 
-        // Inicia o loop principal de leitura numa thread separada
         lidar_thread_ = std::thread(&CspcLidarNode::lidar_loop, this);
     }
 
     ~CspcLidarNode()
     {
-        // Garante que o Lidar é parado corretamente ao encerrar
         node_lidar.serial_port->write_data(end_lidar, 4);
         if (lidar_thread_.joinable())
         {
@@ -81,7 +77,6 @@ public:
     }
 
 private:
-    // Callback para os comandos de status
     void status_callback(const std_msgs::msg::UInt16::SharedPtr msg)
     {
         switch (msg->data)
@@ -91,13 +86,12 @@ private:
             node_lidar.lidar_status.lidar_abnormal_state = 0;
             RCLCPP_INFO(this->get_logger(), "Comando recebido: Iniciar Lidar");
             break;
-        // ... (outros casos como no seu código original) ...
+        // ... (outros casos) ...
         default:
             break;
         }
     }
 
-    // Loop principal que lê os dados do lidar e publica
     void lidar_loop()
     {
         while (rclcpp::ok())
@@ -105,7 +99,7 @@ private:
             if (node_lidar.lidar_status.lidar_abnormal_state != 0)
             {
                 std_msgs::msg::String pubdata;
-                pubdata.data = "Erro no Lidar!"; // Simplificado
+                pubdata.data = "Erro no Lidar!";
                 error_pub_->publish(pubdata);
                 RCLCPP_ERROR(this->get_logger(), "Estado anormal do Lidar detectado!");
                 node_lidar.serial_port->write_data(end_lidar, 4);
@@ -120,8 +114,8 @@ private:
                 auto scan_msg = std::make_unique<sensor_msgs::msg::LaserScan>();
                 sensor_msgs::msg::PointCloud2 pcl_msg;
 
-                scan.config.frame_id = node_lidar.lidar_general_info.frame_id; // Garante que o frame_id está atualizado
-                Scan_to_PointCloud(scan, pcl_msg);
+                // A correção está aqui: Passamos o frame_id que guardámos.
+                Scan_to_PointCloud(scan, pcl_msg, node_lidar.lidar_general_info.frame_id);
 
                 rclcpp::Time corrected_time = this->get_clock()->now() + rclcpp::Duration::from_seconds(time_offset_sec_);
 
@@ -151,7 +145,6 @@ private:
         }
     }
 
-    // Variáveis membro
     rclcpp::Subscription<std_msgs::msg::UInt16>::SharedPtr status_subscription_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr error_pub_;
     rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr scan_pub_;
