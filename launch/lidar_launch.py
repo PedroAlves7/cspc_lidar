@@ -25,7 +25,7 @@ def generate_launch_description():
                                 output='screen',
                                 emulate_tty=True,
                                 parameters=[parameter_file],
-                                name='cspc_lidar_ros2',
+                                name='cspc_lidar',
                                 executable = 'cspc_lidar',
                                 namespace='/',
                                 )
